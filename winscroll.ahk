@@ -1,6 +1,9 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
+#MaxThreadsPerHotkey 3
 Persistent
+SetWinDelay(-1)
+A_MaxHotkeysPerInterval := 200
 
 TraySetIcon(A_ScriptDir "\winscroll.ico")
 
@@ -13,6 +16,22 @@ TraySetIcon(A_ScriptDir "\winscroll.ico")
 minimized := []       ; LIFO stack of HWNDs we minimized
 restoring := false    ; re-entry guard during WinRestore
 minimizing := false   ; re-entry guard during WinMinimize
+
+; ── Prepopulate stack with already-minimized Alt+Tab windows ─────────
+; WinGetList returns top→bottom z-order; push in reverse so the most
+; recently used minimized window is on top of the stack.
+allWins := WinGetList()
+i := allWins.Length
+while i >= 1 {
+    hwnd := allWins[i]
+    if IsAltTabWindow(hwnd) {
+        try {
+            if WinGetMinMax("ahk_id " hwnd) = -1
+                minimized.Push(hwnd)
+        }
+    }
+    i--
+}
 
 ; ── IsAltTabWindow ───────────────────────────────────────────────────
 ; Canonical Win32 algorithm: returns true only for windows that appear
@@ -115,6 +134,29 @@ RestoreOne() {
     }
 }
 
+; ── RestoreFirst — shift and restore the oldest minimized window ─────
+RestoreFirst() {
+    global minimized, restoring
+    while minimized.Length > 0 {
+        hwnd := minimized.RemoveAt(1)
+        try {
+            if !WinExist("ahk_id " hwnd)
+                continue
+            if WinGetMinMax("ahk_id " hwnd) != -1
+                continue
+            restoring := true
+            try
+                WinRestore("ahk_id " hwnd)
+            finally
+                restoring := false
+            try
+                WinActivate("ahk_id " hwnd)
+            return
+        } catch
+            continue
+    }
+}
+
 ; ── Hooks: track external minimize/restore ───────────────────────────
 ; EVENT_SYSTEM_MINIMIZESTART = 0x0016, EVENT_SYSTEM_MINIMIZEEND = 0x0017
 DllCall("SetWinEventHook"
@@ -166,20 +208,32 @@ OnMinimizeEvent(hHook, event, hwnd, idObj, idChild, dwThread, dwTime) {
 ; Win+ScrollUp — restore last minimized window
 #WheelUp::RestoreOne()
 
-; Win+MButton — minimize all windows on monitor under cursor (except active)
+; Shift+Win+ScrollUp — restore oldest minimized window
+#+WheelUp::RestoreFirst()
+
+; Win+MButton — minimize all windows on the monitor under cursor (keep hovered window)
 #MButton::{
     global minimized
-    MouseGetPos(,, &mouseWin)
-    if !mouseWin
-        return
-    hMon := DllCall("MonitorFromWindow", "Ptr", mouseWin, "UInt", 2, "Ptr")
+    CoordMode("Mouse", "Screen")
+    MouseGetPos(&mx, &my, &mouseWin)
+    ; Get monitor from screen coordinates
+    pt := Buffer(8)
+    NumPut("Int", mx, pt, 0)
+    NumPut("Int", my, pt, 4)
+    hMon := DllCall("MonitorFromPoint", "Int64", NumGet(pt, 0, "Int64"), "UInt", 2, "Ptr")
     if !hMon
         return
-    try activeHwnd := WinGetID("A")
-    catch
-        activeHwnd := 0
+    ; Resolve hovered window to top-level owner; skip it if it's a real window
+    skipHwnd := 0
+    if mouseWin {
+        skipHwnd := GetTopLevelOwner(mouseWin)
+        if !IsAltTabWindow(skipHwnd)
+            skipHwnd := 0
+    }
+    ; Collect windows to minimize (WinGetList returns top→bottom z-order)
+    toMinimize := []
     for hwnd in WinGetList() {
-        if hwnd = activeHwnd
+        if hwnd = skipHwnd
             continue
         if !CanMinimize(hwnd)
             continue
@@ -187,7 +241,10 @@ OnMinimizeEvent(hHook, event, hwnd, idObj, idChild, dwThread, dwTime) {
             wMon := DllCall("MonitorFromWindow", "Ptr", hwnd, "UInt", 2, "Ptr")
             if wMon != hMon
                 continue
-            MinimizeAndPush(hwnd)
+            toMinimize.Push(hwnd)
         }
     }
+    ; Minimize in z-order so restoring pops in original z-order
+    for hwnd in toMinimize
+        MinimizeAndPush(hwnd)
 }

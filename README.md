@@ -22,6 +22,8 @@ Restoring is just as fast. Scroll back up and your windows return in reverse ord
 
 Every minimized window is pushed onto a **LIFO stack** (last-in, first-out). Scrolling up pops the most recently minimized window and restores it. This means the restore order is the exact reverse of the minimize order — the windows you cleared last come back first.
 
+On startup, the stack is **prepopulated** with any already-minimized windows so you can immediately restore them without having to re-minimize first.
+
 The stack also tracks **external minimizes** (Win+D, taskbar clicks, etc.) via a system-wide `EVENT_SYSTEM_MINIMIZESTART` hook. If you manually restore a window (clicking it in the taskbar, Alt-Tab, etc.), it is automatically removed from the stack so it won't be restored a second time.
 
 ### Hotkeys
@@ -30,9 +32,16 @@ The stack also tracks **external minimizes** (Win+D, taskbar clicks, etc.) via a
 |---|---|
 | **Win + ScrollDown** | Minimize the window under the cursor, push it onto the stack |
 | **Win + ScrollUp** | Restore the last minimized window from the stack |
-| **Win + MButton** | Minimize all windows on the monitor under the cursor (except the active window) |
+| **Shift + Win + ScrollUp** | Restore the oldest minimized window from the stack |
+| **Win + MButton** | Minimize all windows on the monitor under the cursor (keeps the hovered window, or all if clicking the desktop) |
 
-### Safety
+### Performance
+
+The script is tuned for rapid continuous scrolling:
+
+- `SetWinDelay(-1)` removes the default 100 ms pause after every window operation
+- `A_MaxHotkeysPerInterval := 200` prevents scroll events from being silently dropped
+- `#MaxThreadsPerHotkey 3` allows queued scroll ticks to execute instead of being discarded
 
 Only "real" application windows can be minimized. The script uses the canonical `IsAltTabWindow` algorithm (the same logic Windows uses for Alt-Tab) combined with a `WS_MINIMIZEBOX` style check. Shell components like the taskbar, system tray, and desktop are never touched.
 
