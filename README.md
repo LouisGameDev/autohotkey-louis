@@ -62,6 +62,7 @@ Cycle browser/editor tabs with **Alt + scroll wheel**.
 |---|---|
 | **Alt + ScrollDown** | Next tab (Ctrl+Tab) |
 | **Alt + ScrollUp** | Previous tab (Ctrl+Shift+Tab) |
+| **Alt + MButton** | Close tab (Ctrl+W) |
 
 ---
 
