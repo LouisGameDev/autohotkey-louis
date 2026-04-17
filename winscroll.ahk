@@ -1,3 +1,25 @@
+; ══════════════════════════════════════════════════════════════════════
+; WinScroll
+; Author:  LouisGameDev
+; Repo:    https://github.com/LouisGameDev/autohotkey-louis
+; ══════════════════════════════════════════════════════════════════════
+; OVERVIEW
+;   Minimize and restore windows with the scroll wheel. Maintains a
+;   LIFO stack so restores happen in reverse order. Also tracks
+;   external minimize/restore events (Win+D, taskbar clicks, etc.).
+;
+; TUTORIAL
+;   Win + ScrollDown       →  Minimize the window under the cursor.
+;   Win + ScrollUp         →  Restore the last minimized window.
+;   Shift + Win + ScrollUp →  Restore the oldest minimized window.
+;   Win + MButton          →  Minimize all windows on the monitor
+;                             under the cursor (except the hovered one).
+;
+;   Scroll down on a window to minimize it; scroll up anywhere to
+;   pop the most recently minimized window back. Middle-click to
+;   sweep an entire monitor.
+; ══════════════════════════════════════════════════════════════════════
+
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 #MaxThreadsPerHotkey 3
