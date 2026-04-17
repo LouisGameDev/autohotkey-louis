@@ -52,6 +52,19 @@ Tracked windows are polled every 200 ms. Closing a tracked window removes it aut
 
 ---
 
+## tabscroll.ahk
+
+Cycle browser/editor tabs with **Alt + scroll wheel**.
+
+### Hotkeys
+
+| Hotkey | Action |
+|---|---|
+| **Alt + ScrollDown** | Next tab (Ctrl+Tab) |
+| **Alt + ScrollUp** | Previous tab (Ctrl+Shift+Tab) |
+
+---
+
 ## em-dash.ahk
 
 Type an **em dash** (—) with a single keystroke.
